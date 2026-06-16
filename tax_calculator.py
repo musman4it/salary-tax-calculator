@@ -1,121 +1,69 @@
-import sys
+def calculate_pakistan_tax(income, mode="monthly"):
+    # Convert monthly input to annual for slab processing
+    if mode == "monthly":
+        annual_income = income * 12
+    else:
+        annual_income = income
 
-TAX_SLABS = [
-    (600_000, 0.00, 0),
-    (1_200_000, 0.01, 6_000),
-    (2_200_000, 0.11, 116_000),
-    (3_200_000, 0.23, 346_000),
-    (4_100_000, 0.30, 616_000),
-]
+    fixed_tax = 0
+    percentage = 0
+    excess_base = 0
 
-HIGHEST_RATE = 0.35
-HIGHEST_THRESHOLD = 4_100_000
-HIGHEST_FIXED = 616_000
+    # Apply FBR Progressive Tax Slabs
+    if annual_income <= 600000:
+        fixed_tax, percentage, excess_base = 0, 0, 0
+    elif annual_income <= 1200000:
+        fixed_tax, percentage, excess_base = 0, 0.01, 600000
+    elif annual_income <= 2200000:
+        fixed_tax, percentage, excess_base = 6000, 0.11, 1200000
+    elif annual_income <= 3200000:
+        fixed_tax, percentage, excess_base = 116000, 0.23, 2200000
+    elif annual_income <= 4100000:
+        fixed_tax, percentage, excess_base = 346000, 0.30, 3200000
+    else:
+        fixed_tax, percentage, excess_base = 616000, 0.35, 4100000
 
-SURCHARGE_THRESHOLD = 10_000_000
-SURCHARGE_RATE = 0.09
+    # Calculate Base Tax
+    base_tax = fixed_tax + ((annual_income - excess_base) * percentage)
 
+    # Apply 9% Surcharge on Tax Liability for Income exceeding 10 Million PKR
+    surcharge = 0
+    if annual_income > 10000000:
+        surcharge = base_tax * 0.09
 
-def calculate_tax(annual_income):
-    if annual_income <= 600_000:
-        return 0
+    total_annual_tax = base_tax + surcharge
+    total_monthly_tax = total_annual_tax / 12
 
-    tax = 0
-    previous_threshold = 0
+    net_annual_salary = annual_income - total_annual_tax
+    net_monthly_salary = (annual_income / 12) - total_monthly_tax
 
-    for threshold, rate, _ in TAX_SLABS:
-        if annual_income > previous_threshold:
-            taxable_in_slab = min(annual_income, threshold) - previous_threshold
-            if taxable_in_slab > 0:
-                tax += taxable_in_slab * rate
-        previous_threshold = threshold
+    return {
+        "annual_gross": annual_income,
+        "monthly_gross": annual_income / 12,
+        "annual_tax": total_annual_tax,
+        "monthly_tax": total_monthly_tax,
+        "annual_net": net_annual_salary,
+        "monthly_net": net_monthly_salary,
+        "surcharge_applied": surcharge > 0
+    }
 
-    if annual_income > HIGHEST_THRESHOLD:
-        tax += (annual_income - HIGHEST_THRESHOLD) * HIGHEST_RATE
-
-    if annual_income > SURCHARGE_THRESHOLD:
-        tax += tax * SURCHARGE_RATE
-
-    return round(tax, 2)
-
-
-def format_currency(amount):
-    return f"Rs. {amount:,.2f}"
-
-
-def show_breakdown(label, gross_annual, tax_annual):
-    gross_monthly = gross_annual / 12
-    tax_monthly = tax_annual / 12
-    net_annual = gross_annual - tax_annual
-    net_monthly = net_annual / 12
-
-    print(f"\n{'='*60}")
-    print(f"  {label}")
-    print(f"{'='*60}")
-    print(f"  {'Item':<30} {'Monthly':>14} {'Annually':>14}")
-    print(f"  {'-'*58}")
-    print(f"  {'Gross Income':<30} {format_currency(gross_monthly):>14} {format_currency(gross_annual):>14}")
-    print(f"  {'Tax Deducted':<30} {format_currency(tax_monthly):>14} {format_currency(tax_annual):>14}")
-    print(f"  {'Net Take-Home':<30} {format_currency(net_monthly):>14} {format_currency(net_annual):>14}")
-    print(f"{'='*60}\n")
-
-
-def get_float_input(prompt):
-    while True:
-        try:
-            value = float(input(prompt).strip())
-            if value < 0:
-                print("Amount cannot be negative. Please try again.")
-                continue
-            return value
-        except ValueError:
-            print("Invalid input. Please enter a numeric value.")
-
-
-def get_period_input():
-    while True:
-        period = input("Is this amount monthly or annually? (M/A): ").strip().lower()
-        if period in ('m', 'monthly'):
-            return 'monthly'
-        if period in ('a', 'annually', 'annual'):
-            return 'annually'
-        print("Invalid choice. Enter 'M' for monthly or 'A' for annually.")
-
-
-def get_yes_no(prompt):
-    while True:
-        choice = input(prompt).strip().lower()
-        if choice in ('y', 'yes'):
-            return True
-        if choice in ('n', 'no'):
-            return False
-        print("Please enter 'Y' or 'N'.")
-
-
-def main():
-    print("\n" + "=" * 60)
-    print("  Pakistan Salary Tax Calculator (FBR Slabs)")
-    print("  Based on Finance Act 2024/2025 — Salaried Individuals")
-    print("=" * 60)
-
-    while True:
-        print("\n--- New Calculation ---")
-
-        amount = get_float_input("Enter salary amount: ")
-        period = get_period_input()
-
-        annual_income = amount if period == 'annually' else amount * 12
-
-        tax = calculate_tax(annual_income)
-
-        show_breakdown("Tax Breakdown", annual_income, tax)
-
-        if not get_yes_no("\nCalculate another? (Y/N): "):
-            break
-
-    print("Goodbye!\n")
-    sys.exit(0)
-
-
+# Quick testing interface
 if __name__ == "__main__":
-    main()
+    print("--- Pakistan Salary Tax Calculator ---")
+    salary_input = float(input("Enter Salary Amount (PKR): "))
+    salary_mode = input("Is this 'monthly' or 'annual'? ").strip().lower()
+
+    result = calculate_pakistan_tax(salary_input, salary_mode)
+
+    print("\n================ RESULTS ================")
+    print(f"Gross Annual Income:  PKR {result['annual_gross']:,.2f}")
+    print(f"Gross Monthly Income: PKR {result['monthly_gross']:,.2f}")
+    print("-----------------------------------------")
+    print(f"Total Annual Tax:     PKR {result['annual_tax']:,.2f}")
+    print(f"Total Monthly Tax:    PKR {result['monthly_tax']:,.2f}")
+    print("-----------------------------------------")
+    print(f"Net Annual Take-Home: PKR {result['annual_net']:,.2f}")
+    print(f"Net Monthly Take-Home:PKR {result['monthly_net']:,.2f}")
+    if result['surcharge_applied']:
+        print("Note: Includes a 9% high-earner surcharge on total tax liability.")
+    print("=========================================\n")
